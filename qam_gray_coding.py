@@ -3,6 +3,15 @@ from numpy import multiply
 import numpy as np
 
 
+def to_binary_string(integer):
+    return "{0:b}".format(integer)
+
+
+def mat_binary_disp(mat):
+    arrlambda = lambda arr: list(map(to_binary_string, arr))
+    return list(map(arrlambda, mat))
+
+
 def count_set_bits(n):
     # base case
     if n == 0:
@@ -18,8 +27,13 @@ def gray_code(n_bits):
 
 
 def is_gray_neighbors(x, y):
-    dif = np.absolute(np.subtract(x, y))
+    dif = x ^ y  # XOR
     return count_set_bits(dif) == 1
+
+
+def are_all_gray_neighbors(x, hood):
+    neighbors_checks = list(map(lambda y: is_gray_neighbors(x, y), hood))
+    return functools.reduce(lambda a, b: a & b, neighbors_checks, True)
 
 
 def neighborhood(mat, index):
@@ -37,7 +51,6 @@ def neighborhood(mat, index):
     if index[1] > 0:
         if mat[(index[0], index[1] - 1)] > -1:
             hood = hood + [mat[(index[0], index[1] - 1)]]
-
     return hood
 
 
@@ -54,23 +67,27 @@ def populate_gray_mat(mat, m, available_list, index):
             return mat
     else:  # populate slot!
         hood = neighborhood(mat, index)
-        candidate = available_list[0]
+        is_gray_relative_to_hood = lambda x: are_all_gray_neighbors(x, hood)
+        candidate_list = list(filter(is_gray_relative_to_hood, available_list))
+        candidate = candidate_list[0]
+        # populate and proceed
+        mat[index] = candidate
+        available_list = np.setdiff1d(available_list, np.array(candidate), True)
+        return populate_gray_mat(mat, m, available_list, index)
+
+
+def populate_qam_slot(hood, available_list):
+    for candidate in available_list:
         neighborhood_check = list(map(lambda i: is_gray_neighbors(candidate, i),
                                       hood))
         neighborhood_check = functools.reduce(lambda a, b: a and b,
                                               neighborhood_check, True)
         if neighborhood_check:
-            # populate and proceed
-            mat[index] = candidate
-            available_list = np.setdiff1d(available_list, np.array(candidate), True)
-            return populate_gray_mat(mat, m, available_list, index)
-        else:
-            # run again with a different candidate
-            return populate_gray_mat(mat, m, np.roll(available_list, 1), index)
+            return candidate
 
 
 def qam_center(z_list):
-    return np.subtract(z_list, np.mean(z_list) )
+    return np.subtract(z_list, np.mean(z_list))
 
 
 def qam_normalize(z_list_in):
@@ -97,8 +114,8 @@ def n_qam_ind_to_qam(n):
 # returns a function mapping indexes to binary
 def qam_gray_mat(m):
     line_length = int(np.sqrt(m))
-    gray_x = gray_code(int(np.log2(line_length)))
-    gray_y = multiply(gray_x, 2 ** (line_length-1))
+    gray_x = gray_code(int(np.log2(m)/2))
+    gray_y = multiply(gray_x, 2 ** (np.log2(m)/2))
     fill_list = np.setdiff1d(np.arange(m), gray_x, True)
     fill_list = np.setdiff1d(fill_list, gray_y, True)
     mat = np.full((line_length, line_length), -1)
