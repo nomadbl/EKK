@@ -97,7 +97,7 @@ def qam_normalize(z_list_in):
 
 
 # returns a matrix mapping indexes to qam
-def n_qam_ind_to_qam(n):
+def n_qam_mat(n):
     mat_length = int(np.sqrt(n))
     x = np.arange(mat_length)
     y = np.arange(mat_length)
@@ -124,25 +124,33 @@ def qam_gray_mat(m):
     return populate_gray_mat(mat, m, fill_list, (0, 0))
 
 
-# output two functions
-# decode: binary -> QAM
-# code: QAM -> binary
-# QAM is a complex number
-# binary is an integer
 def qam_gray_coding(n):
+    """output two functions
+    decode: QAM -> binary
+    code: binary -> QAM
+    QAM is a complex number
+    binary is an integer"""
+
     # mat can be seen as a function index -> binary
     bin_mat = qam_gray_mat(n)
     # function index -> qam
-    qam_mat = n_qam_ind_to_qam(n)
+    qam_mat = n_qam_mat(n)
     # because the two matrices have corresponding elements in the same indices,
     # we can make them into arrays with the same property
     bin_arr = bin_mat.ravel()
     qam_arr = qam_mat.ravel()
     # build dictionaries to form the functions
-    code_dict = dict(zip(qam_arr, bin_arr))
-    decode_dict = dict(zip(bin_arr, qam_arr))
+    decode_dict = dict(zip(qam_arr, bin_arr))
+    code_dict = dict(zip(bin_arr, qam_arr))
     # convert to functions
-    code_func = lambda qam: code_dict[qam]
-    decode_func = lambda binary: decode_dict[binary]
+    decode_func = lambda qam: decode_dict[qam]
+    code_func = lambda binary: code_dict[binary]
     # return functions
     return code_func, decode_func
+
+
+# find nearest m-qam element to given point in the complex plane
+def hard_decision(point, m):
+    qam = list(n_qam_mat(m).flatten())
+    closer_to_point = lambda pt1, pt2: sorted([pt1, pt2], key=lambda p: np.abs(p-point), reverse=True).pop()
+    return functools.reduce(closer_to_point, qam)
